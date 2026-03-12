@@ -1,0 +1,13 @@
+# --- Binaries ---
+bin/
+renderer
+reference/donut
+
+# --- Objects ---
+obj/
+*.o
+
+# --- IDE & OS ---
+.vscode/
+.DS_Store
+build/
