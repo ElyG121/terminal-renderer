@@ -3,18 +3,22 @@
 #include <cmath>
 #include <unistd.h>
 
+// 1. GLOBAL RENDER SETTINGS
+const int SCREEN_WIDTH = 80;
+const int SCREEN_HEIGHT = 22;
+const int CENTER_X = SCREEN_WIDTH / 2;
+const int CENTER_Y = SCREEN_HEIGHT / 2;
+const int K = 15;
+const int Z_OFFSET = 25;
+const std::string SHADES = ".,-~:;=!*#$@";
+
+void render_point(float x, float y, float z, float nx, float ny, float nz, float alpha, float beta, std::vector<char> &buffer, std::vector<float> &z_buffer);
+
 int main()
 {
-    const int SCREEN_WIDTH = 80, SCREEN_HEIGHT = 22;
-    const int CENTER_X = SCREEN_WIDTH / 2, CENTER_Y = SCREEN_HEIGHT / 2;
     const int SIZE = 7;
-    const int Z = 25;
-    const int K = Z - 10;
 
-    // Define our illumination palette (from dim to bright)
-    const std::string shades = ".,-~:;=!*#$@";
-
-    std::cout << "\x1b[2J";
+    std::cout << "\x1b[2J"; // Clear screen
 
     while (true)
     {
@@ -25,43 +29,24 @@ int main()
             std::vector<char> buffer(SCREEN_WIDTH * SCREEN_HEIGHT, ' ');
             std::vector<float> z_buffer(SCREEN_WIDTH * SCREEN_HEIGHT, 0.0f);
 
-            float cos_rot = cos(angle);
-            float sin_rot = sin(angle);
-
-            // Calculate the flat surface lighting
-            // Using fabs() makes it a "two-sided" square so both sides catch the light.
-            float luminance = fabs(cos_rot);
-
-            // Map the luminance (0.0 to 1.0) to an index (0 to 11)
-            int luminance_index = (int)(luminance * 11);
-
-            for (float local_y = -SIZE; local_y < SIZE; local_y += 0.1)
+            for (float u = -SIZE; u <= SIZE; u += 0.1)
             {
-                for (float local_x = -SIZE; local_x < SIZE; local_x += 0.1)
+                for (float v = -SIZE; v <= SIZE; v += 0.1)
                 {
+                    // Front face (+z) -> normal points +z
+                    render_point(u, v, SIZE, 0, 0, 1, angle, angle * 0.5, buffer, z_buffer);
+                    // Back face (-z) -> normal points -z
+                    render_point(u, v, -SIZE, 0, 0, -1, angle, angle * 0.5, buffer, z_buffer);
 
-                    // Calculate point coordinates
-                    float rot_x = local_x * cos_rot;
-                    float rot_z = local_x * sin_rot;
-                    float rot_y = local_y;
+                    // Right face (+x) -> normal points +x
+                    render_point(SIZE, u, v, 1, 0, 0, angle, angle * 0.5, buffer, z_buffer);
+                    // Left face (-x) -> normal points -x
+                    render_point(-SIZE, u, v, -1, 0, 0, angle, angle * 0.5, buffer, z_buffer);
 
-                    float final_z = rot_z + Z;
-                    float rot_ooz = 1.0f / final_z;
-
-                    // Project to screen
-                    // Added + 0.5f for cleaner rounding on the edges
-                    int screen_x = (int)(CENTER_X + (K * rot_x * 2 * rot_ooz) + 0.5f);
-                    int screen_y = (int)(CENTER_Y + (K * rot_y * rot_ooz) + 0.5f);
-
-                    int index = screen_y * SCREEN_WIDTH + screen_x;
-                    if (screen_x >= 0 && screen_x < SCREEN_WIDTH && screen_y >= 0 && screen_y < SCREEN_HEIGHT)
-                    {
-                        if (rot_ooz > z_buffer[index])
-                        {
-                            z_buffer[index] = rot_ooz;
-                            buffer[index] = shades[luminance_index];
-                        }
-                    }
+                    // Top face (+y) -> normal points +y
+                    render_point(u, SIZE, v, 0, 1, 0, angle, angle * 0.5, buffer, z_buffer);
+                    // Bottom face (-y) -> normal points -y
+                    render_point(u, -SIZE, v, 0, -1, 0, angle, angle * 0.5, buffer, z_buffer);
                 }
             }
 
@@ -78,4 +63,46 @@ int main()
         }
     }
     return 0;
+}
+
+void render_point(float x, float y, float z, float nx, float ny, float nz, float alpha, float beta, std::vector<char> &buffer, std::vector<float> &z_buffer)
+{
+    float cos_a = cos(alpha);
+    float sin_a = sin(alpha);
+    float cos_b = cos(beta);
+    float sin_b = sin(beta);
+
+    // 1. Rotate the point (x, y, z)
+    float rot_x = x * cos_a - z * sin_a;
+    float rot_y = -x * sin_a * sin_b + y * cos_b - z * cos_a * sin_b;
+    float final_z = x * sin_a * cos_b + y * sin_b + z * cos_a * cos_b + Z_OFFSET;
+    float rot_ooz = 1.0f / final_z;
+
+    // 2. Rotate the normal (nx, ny, nz)
+    float rot_nz = nx * sin_a * cos_b + ny * sin_b + nz * cos_a * cos_b;
+
+    // 3. Calculate luminance using the rotated normal
+    // Light is coming from screen (0, 0, -1), so dot product is just -rot_nz
+    float luminance = -rot_nz;
+    if (luminance < 0)
+        luminance = 0; // Clamp negative light to 0
+
+    // 4. Look up your character from ".,-~:;=!*#$@"
+    int luminance_index = (int)(luminance * 11);
+    char pixel_char = SHADES[luminance_index];
+
+    // 5. Project to screen_x, screen_y
+    int screen_x = (int)(CENTER_X + (K * rot_x * 2 * rot_ooz) + 0.5f);
+    int screen_y = (int)(CENTER_Y + (K * rot_y * rot_ooz) + 0.5f);
+
+    int index = screen_y * SCREEN_WIDTH + screen_x;
+    if (screen_x >= 0 && screen_x < SCREEN_WIDTH && screen_y >= 0 && screen_y < SCREEN_HEIGHT)
+    {
+        // 6. Check Z-buffer and draw
+        if (rot_ooz > z_buffer[index])
+        {
+            z_buffer[index] = rot_ooz;
+            buffer[index] = pixel_char;
+        }
+    }
 }
