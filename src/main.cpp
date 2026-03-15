@@ -2,8 +2,24 @@
 #include <vector>
 #include <cmath>
 #include <unistd.h>
+#include <algorithm>
 
-// 1. GLOBAL RENDER SETTINGS
+struct Vertex
+{
+    float x, y, z;
+    float nx, ny, nz;
+
+    Vertex(float ax, float ay, float az, float anx, float any, float anz)
+        : x(ax), y(ay), z(az), nx(anx), ny(any), nz(anz)
+    {
+    }
+
+    Vertex() : Vertex(0, 0, 0, 0, 0, 0)
+    {
+    }
+};
+
+// GLOBAL RENDER SETTINGS
 const int SCREEN_WIDTH = 80;
 const int SCREEN_HEIGHT = 22;
 const int CENTER_X = SCREEN_WIDTH / 2;
@@ -12,50 +28,49 @@ const int K = 15;
 const int Z_OFFSET = 25;
 const std::string SHADES = ".,-~:;=!*#$@";
 
-void render_point(float x, float y, float z, float nx, float ny, float nz, float alpha, float beta, std::vector<char> &buffer, std::vector<float> &z_buffer);
+void render_vertex(const Vertex &v, std::vector<char> &buffer, std::vector<float> &z_buffer);
+void rotate_vertex(const Vertex &v, float cos_a, float sin_a, float cos_b, float sin_b, Vertex &out);
+char get_pixel_char(const Vertex &v);
+std::vector<Vertex> create_cube(int size);
 
 int main()
 {
-    const int SIZE = 7;
+    // Define shape
+    std::vector<Vertex> shape = create_cube(7);
 
     std::cout << "\x1b[2J"; // Clear screen
+
+    Vertex rot_v;
+    // Create the buffers ONCE outside the loops
+    std::vector<char> buffer(SCREEN_WIDTH * SCREEN_HEIGHT);
+    std::vector<float> z_buffer(SCREEN_WIDTH * SCREEN_HEIGHT);
 
     while (true)
     {
         for (float angle = 0; angle <= 2 * M_PI; angle += 0.05)
         {
-            std::cout << "\x1b[H";
+            std::cout << "\x1b[H"; // Move cursor to start
 
-            std::vector<char> buffer(SCREEN_WIDTH * SCREEN_HEIGHT, ' ');
-            std::vector<float> z_buffer(SCREEN_WIDTH * SCREEN_HEIGHT, 0.0f);
+            // Reset terminal buffers
+            std::fill(buffer.begin(), buffer.end(), ' ');
+            std::fill(z_buffer.begin(), z_buffer.end(), 0.0f);
 
-            for (float u = -SIZE; u <= SIZE; u += 0.1)
+            // Pre-calculate trig ONCE per frame
+            float cos_a = cos(angle);
+            float sin_a = sin(angle);
+            float cos_b = cos(angle * 0.5);
+            float sin_b = sin(angle * 0.5);
+
+            for (const Vertex &v : shape)
             {
-                for (float v = -SIZE; v <= SIZE; v += 0.1)
-                {
-                    // Front face (+z) -> normal points +z
-                    render_point(u, v, SIZE, 0, 0, 1, angle, angle * 0.5, buffer, z_buffer);
-                    // Back face (-z) -> normal points -z
-                    render_point(u, v, -SIZE, 0, 0, -1, angle, angle * 0.5, buffer, z_buffer);
-
-                    // Right face (+x) -> normal points +x
-                    render_point(SIZE, u, v, 1, 0, 0, angle, angle * 0.5, buffer, z_buffer);
-                    // Left face (-x) -> normal points -x
-                    render_point(-SIZE, u, v, -1, 0, 0, angle, angle * 0.5, buffer, z_buffer);
-
-                    // Top face (+y) -> normal points +y
-                    render_point(u, SIZE, v, 0, 1, 0, angle, angle * 0.5, buffer, z_buffer);
-                    // Bottom face (-y) -> normal points -y
-                    render_point(u, -SIZE, v, 0, -1, 0, angle, angle * 0.5, buffer, z_buffer);
-                }
+                rotate_vertex(v, cos_a, sin_a, cos_b, sin_b, rot_v);
+                render_vertex(rot_v, buffer, z_buffer);
             }
 
+            // Write to screen line-by-line
             for (int y = 0; y < SCREEN_HEIGHT; y++)
             {
-                for (int x = 0; x < SCREEN_WIDTH; x++)
-                {
-                    std::cout << buffer[y * SCREEN_WIDTH + x];
-                }
+                std::cout.write(&buffer[y * SCREEN_WIDTH], SCREEN_WIDTH);
                 std::cout << "\r\n";
             }
 
@@ -65,44 +80,75 @@ int main()
     return 0;
 }
 
-void render_point(float x, float y, float z, float nx, float ny, float nz, float alpha, float beta, std::vector<char> &buffer, std::vector<float> &z_buffer)
+std::vector<Vertex> create_cube(int size)
 {
-    float cos_a = cos(alpha);
-    float sin_a = sin(alpha);
-    float cos_b = cos(beta);
-    float sin_b = sin(beta);
+    std::vector<Vertex> cube;
+    int steps = (size * 2) * 10;
+    cube.reserve(steps * steps * 6);
 
-    // 1. Rotate the point (x, y, z)
-    float rot_x = x * cos_a - z * sin_a;
-    float rot_y = -x * sin_a * sin_b + y * cos_b - z * cos_a * sin_b;
-    float final_z = x * sin_a * cos_b + y * sin_b + z * cos_a * cos_b + Z_OFFSET;
-    float rot_ooz = 1.0f / final_z;
+    for (float u = -size; u <= size; u += 0.1)
+    {
+        for (float v = -size; v <= size; v += 0.1)
+        {
+            cube.push_back(Vertex(u, v, size, 0, 0, 1));
+            cube.push_back(Vertex(u, v, -size, 0, 0, -1));
 
-    // 2. Rotate the normal (nx, ny, nz)
-    float rot_nz = nx * sin_a * cos_b + ny * sin_b + nz * cos_a * cos_b;
+            cube.push_back(Vertex(size, u, v, 1, 0, 0));
+            cube.push_back(Vertex(-size, u, v, -1, 0, 0));
 
-    // 3. Calculate luminance using the rotated normal
-    // Light is coming from screen (0, 0, -1), so dot product is just -rot_nz
-    float luminance = -rot_nz;
-    if (luminance < 0)
-        luminance = 0; // Clamp negative light to 0
+            cube.push_back(Vertex(u, size, v, 0, 1, 0));
+            cube.push_back(Vertex(u, -size, v, 0, -1, 0));
+        }
+    }
+    return cube;
+}
 
-    // 4. Look up your character from ".,-~:;=!*#$@"
-    int luminance_index = (int)(luminance * 11);
-    char pixel_char = SHADES[luminance_index];
+void render_vertex(const Vertex &v, std::vector<char> &buffer, std::vector<float> &z_buffer)
+{
 
-    // 5. Project to screen_x, screen_y
-    int screen_x = (int)(CENTER_X + (K * rot_x * 2 * rot_ooz) + 0.5f);
-    int screen_y = (int)(CENTER_Y + (K * rot_y * rot_ooz) + 0.5f);
+    // Project to screen_x, screen_y
+    float rot_ooz = 1.0f / (v.z + Z_OFFSET);
+    int screen_x = (int)(CENTER_X + (K * v.x * 2 * rot_ooz) + 0.5f);
+    int screen_y = (int)(CENTER_Y + (K * v.y * rot_ooz) + 0.5f);
 
     int index = screen_y * SCREEN_WIDTH + screen_x;
     if (screen_x >= 0 && screen_x < SCREEN_WIDTH && screen_y >= 0 && screen_y < SCREEN_HEIGHT)
     {
-        // 6. Check Z-buffer and draw
+        // Check Z-buffer and draw
         if (rot_ooz > z_buffer[index])
         {
+            char pixel_char = get_pixel_char(v);
             z_buffer[index] = rot_ooz;
             buffer[index] = pixel_char;
         }
     }
+}
+
+void rotate_vertex(const Vertex &v, float cos_a, float sin_a, float cos_b, float sin_b, Vertex &out)
+{
+
+    // Rotate the point (x, y, z)
+    out.x = v.x * cos_a - v.z * sin_a;
+    out.y = -v.x * sin_a * sin_b + v.y * cos_b - v.z * cos_a * sin_b;
+    out.z = v.x * sin_a * cos_b + v.y * sin_b + v.z * cos_a * cos_b;
+
+    // Rotate the normal (nx, ny, nz)
+    out.nx = v.nx * cos_a - v.nz * sin_a;
+    out.ny = -v.nx * sin_a * sin_b + v.ny * cos_b - v.nz * cos_a * sin_b;
+    out.nz = v.nx * sin_a * cos_b + v.ny * sin_b + v.nz * cos_a * cos_b;
+}
+
+char get_pixel_char(const Vertex &v)
+{
+    // Calculate luminance using the rotated normal
+    // Light is coming from screen (0, 0, -1), so dot product is just -rot_nz
+    float luminance = -v.nz;
+    if (luminance < 0)
+        luminance = 0; // Clamp negative light to 0
+    if (luminance > 1)
+        luminance = 1; // Clamp light to 1
+
+    // Look up your character from ".,-~:;=!*#$@"
+    int luminance_index = (int)(luminance * 11);
+    return SHADES[luminance_index];
 }
