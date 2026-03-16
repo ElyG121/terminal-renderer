@@ -1,7 +1,6 @@
 # --- Binaries ---
 bin/
 renderer
-reference/donut
 
 # --- Objects ---
 obj/
