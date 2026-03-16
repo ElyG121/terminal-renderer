@@ -1,5 +1,4 @@
 #include "Framebuffer.h"
-#include <iostream>
 #include <algorithm>
 
 void Framebuffer::clear()

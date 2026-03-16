@@ -1,6 +1,6 @@
 # --- Terminal Renderer Makefile ---
 CXX      := g++
-CXXFLAGS := -Wall -Wextra -O3 -std=c++17
+CXXFLAGS := -Wall -Wextra -O3 -std=c++17 -MMD -MP
 LDFLAGS  := -lm
 
 # Directories
@@ -37,3 +37,5 @@ clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
 .PHONY: all run clean
+
+-include $(OBJS:.o=.d)
