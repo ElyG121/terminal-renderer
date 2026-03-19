@@ -1,5 +1,5 @@
 #include <cmath>
-#include "Torus.h"
+#include "Torus.hpp"
 
 Torus::Torus(float R1, float R2)
 {

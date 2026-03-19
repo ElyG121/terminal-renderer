@@ -1,6 +1,6 @@
-#include "ShapeFactory.h"
-#include "Cube.h"
-#include "Torus.h"
+#include "ShapeFactory.hpp"
+#include "Cube.hpp"
+#include "Torus.hpp"
 
 std::unique_ptr<Shape> ShapeFactory::createCube(float size)
 {

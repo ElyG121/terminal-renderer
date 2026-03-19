@@ -1,6 +1,6 @@
 #pragma once
 #include <memory>
-#include "Shape.h"
+#include "Shape.hpp"
 
 class ShapeFactory
 {

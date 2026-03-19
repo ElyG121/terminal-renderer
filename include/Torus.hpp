@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-#include "Shape.h"
+#include "Shape.hpp"
 
 class Torus : public Shape
 {

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include "Vertex.h"
+#include "Vertex.hpp"
 
 class Framebuffer
 {

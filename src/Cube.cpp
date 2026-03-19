@@ -1,5 +1,5 @@
 #include <cmath>
-#include "Cube.h"
+#include "Cube.hpp"
 
 // The parameter now explicitly represents the total length of an edge
 Cube::Cube(float edge_length)
