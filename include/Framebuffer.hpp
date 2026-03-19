@@ -10,8 +10,15 @@ private:
     const int HEIGHT, WIDTH, CENTER_X, CENTER_Y, K, Z_OFFSET;
     const std::string SHADES;
 
+    // Default light pointing towards the camera
+    float light_x = 0.0f;
+    float light_y = 0.0f;
+    float light_z = -1.0f;
+
     std::vector<char> buffer;
     std::vector<float> z_buffer;
+
+    char calculate_vertex_char(const Vertex &v) const;
 
 public:
     /* Constructor */
@@ -27,6 +34,8 @@ public:
     void clear();
 
     void render_vertex(const Vertex &v);
+
+    void set_light_direction(float lx, float ly, float lz);
 
     void display() const;
 };

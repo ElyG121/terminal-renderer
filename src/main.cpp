@@ -6,6 +6,7 @@ int main()
 {
     // 1. Initialize your new rendering engine
     Renderer engine(24, 80, 40, 25);
+    engine.set_light_direction(0.7f, -1.0f, -0.5f);
     std::vector<std::unique_ptr<Shape>> scene;
 
     // 2. Setup Scene

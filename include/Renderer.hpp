@@ -13,6 +13,8 @@ public:
     // The only public function the user needs to call
     void render_scene(std::vector<std::unique_ptr<Shape>> &scene);
 
+    void set_light_direction(float lx, float ly, float lz);
+
     // Utility methods for the user to control the screen
     void clear_screen();
     void display();
@@ -22,5 +24,4 @@ private:
 
     // Hidden internal rendering pipeline
     void render_shape(const std::unique_ptr<Shape> &shape_ptr);
-    void rotate_vertex(const Vertex &v, float cx, float sx, float cy, float sy, float cz, float sz, Vertex &out);
 };

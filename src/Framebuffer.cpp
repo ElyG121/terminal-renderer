@@ -1,5 +1,18 @@
 #include "Framebuffer.hpp"
 #include <algorithm>
+#include <cmath> // Needed for std::sqrt
+
+void Framebuffer::set_light_direction(float lx, float ly, float lz)
+{
+    // Normalize the vector so the dot product stays within the [-1, 1] range
+    float length = std::sqrt(lx * lx + ly * ly + lz * lz);
+    if (length != 0.0f)
+    {
+        light_x = lx / length;
+        light_y = ly / length;
+        light_z = lz / length;
+    }
+}
 
 void Framebuffer::clear()
 {
@@ -25,21 +38,9 @@ void Framebuffer::render_vertex(const Vertex &v)
         // --- B. Z-BUFFER CHECK ---
         if (rot_ooz > z_buffer[index])
         {
-            // --- C. LIGHTING (Luminance) ---
-            // Light is coming from screen (0, 0, -1), so dot product is just -v.nz
-            float luminance = -v.nz;
-            if (luminance < 0)
-                luminance = 0; // Clamp negative light to 0
-            if (luminance > 1)
-                luminance = 1; // Clamp light to 1
-
-            // Look up character from SHADES string
-            int luminance_index = (int)(luminance * 11);
-            char pixel_char = SHADES[luminance_index];
-
-            // --- D. DRAW TO BUFFERS ---
+            // --- C. DRAW TO BUFFERS ---
             z_buffer[index] = rot_ooz;
-            buffer[index] = pixel_char;
+            buffer[index] = calculate_vertex_char(v);
         }
     }
 }
@@ -52,4 +53,19 @@ void Framebuffer::display() const
         std::cout.write(&buffer[y * WIDTH], WIDTH);
         std::cout << "\r\n";
     }
+}
+
+char Framebuffer::calculate_vertex_char(const Vertex &v) const
+{
+    // Calculate the dot product of the vertex normal and the light vector
+    float luminance = v.nx * light_x + v.ny * light_y + v.nz * light_z;
+
+    if (luminance < 0)
+        luminance = 0; // Clamp negative light to 0
+    if (luminance > 1)
+        luminance = 1; // Clamp light to 1
+
+    // Look up character from SHADES string
+    int luminance_index = (int)(luminance * 11);
+    return SHADES[luminance_index];
 }

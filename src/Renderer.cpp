@@ -36,59 +36,29 @@ void Renderer::render_shape(const std::unique_ptr<Shape> &shape_ptr)
     float cz = cos(shape_ptr->rot_z);
     float sz = sin(shape_ptr->rot_z);
 
-    Vertex rot_v; // Cleanly scoped to this function now
-
     for (const Vertex &v : shape_ptr->vertices)
     {
-        rotate_vertex(v, cx, sx, cy, sy, cz, sz, rot_v);
+        // 1. The vertex handles its own rotation!
+        Vertex rot_v = v.rotate(cx, sx, cy, sy, cz, sz);
 
+        // 2. The renderer handles world translation
         rot_v.x += shape_ptr->world_x;
         rot_v.y += shape_ptr->world_y;
         rot_v.z += shape_ptr->world_z;
 
+        // 3. The renderer draws to the screen
         screen.render_vertex(rot_v);
     }
 }
 
-void Renderer::rotate_vertex(const Vertex &v, float cx, float sx, float cy, float sy, float cz, float sz, Vertex &out)
+void Renderer::set_light_direction(float lx, float ly, float lz)
 {
-    // --- POSITION ROTATION ---
-    // Step 1: Rotate around X-axis
-    float x1 = v.x;
-    float y1 = v.y * cx - v.z * sx;
-    float z1 = v.y * sx + v.z * cx;
-
-    // Step 2: Rotate around Y-axis
-    float x2 = x1 * cy + z1 * sy;
-    float y2 = y1;
-    float z2 = -x1 * sy + z1 * cy;
-
-    // Step 3: Rotate around Z-axis
-    out.x = x2 * cz - y2 * sz;
-    out.y = x2 * sz + y2 * cz;
-    out.z = z2;
-
-    // --- NORMAL ROTATION ---
-    // Step 1: Rotate around X-axis
-    float nx1 = v.nx;
-    float ny1 = v.ny * cx - v.nz * sx;
-    float nz1 = v.ny * sx + v.nz * cx;
-
-    // Step 2: Rotate around Y-axis
-    float nx2 = nx1 * cy + nz1 * sy;
-    float ny2 = ny1;
-    float nz2 = -nx1 * sy + nz1 * cy;
-
-    // Step 3: Rotate around Z-axis
-    out.nx = nx2 * cz - ny2 * sz;
-    out.ny = nx2 * sz + ny2 * cz;
-    out.nz = nz2;
+    // Delegate the math to the internal framebuffer
+    screen.set_light_direction(lx, ly, lz);
 }
 
 void Renderer::clear_screen()
 {
-    // Clear your internal framebuffer buffers here
-    // screen.clear();
     screen.clear();
 }
 
