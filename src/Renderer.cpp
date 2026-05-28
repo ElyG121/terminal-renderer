@@ -1,7 +1,8 @@
 #include "Renderer.hpp"
 #include <iostream>
 #include <cmath>
-#include <unistd.h>
+#include <chrono>
+#include <thread>
 
 Renderer::Renderer(int height, int width, int z_offset, int k)
     : screen(height, width, z_offset, k)
@@ -9,11 +10,20 @@ Renderer::Renderer(int height, int width, int z_offset, int k)
     std::cout << "\x1b[2J"; // Clear the terminal ONCE at startup
 }
 
-void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene)
+void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_frames)
 {
-    float delta = 0.03f;
-    while (true)
+    using clock = std::chrono::steady_clock;
+    const auto frame_duration = std::chrono::milliseconds(33);
+    auto previous = clock::now();
+    int frame_count = 0;
+
+    while (max_frames < 0 || frame_count < max_frames)
     {
+        auto current = clock::now();
+        std::chrono::duration<float> delta_duration = current - previous;
+        previous = current;
+        float delta = delta_duration.count();
+
         clear_screen();
 
         for (const auto &shape : scene)
@@ -23,7 +33,14 @@ void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene)
         }
 
         display();
-        usleep(30000);
+
+        auto elapsed = clock::now() - current;
+        if (elapsed < frame_duration)
+        {
+            std::this_thread::sleep_for(frame_duration - elapsed);
+        }
+
+        frame_count++;
     }
 }
 

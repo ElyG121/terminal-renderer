@@ -1,6 +1,7 @@
 #include "Framebuffer.hpp"
 #include <algorithm>
 #include <cmath> // Needed for std::sqrt
+#include <iostream>
 
 void Framebuffer::set_light_direction(float lx, float ly, float lz)
 {
@@ -51,7 +52,7 @@ void Framebuffer::display() const
     for (int y = 0; y < HEIGHT; y++)
     {
         std::cout.write(&buffer[y * WIDTH], WIDTH);
-        std::cout << "\r\n";
+        std::cout << '\n';
     }
 }
 
@@ -66,6 +67,11 @@ char Framebuffer::calculate_vertex_char(const Vertex &v) const
         luminance = 1; // Clamp light to 1
 
     // Look up character from SHADES string
-    int luminance_index = (int)(luminance * 11);
-    return SHADES[luminance_index];
+    int luminance_index = static_cast<int>(luminance * static_cast<float>(SHADES.size() - 1));
+    if (luminance_index < 0)
+        luminance_index = 0;
+    if (luminance_index >= static_cast<int>(SHADES.size()))
+        luminance_index = static_cast<int>(SHADES.size() - 1);
+
+    return SHADES[static_cast<std::size_t>(luminance_index)];
 }

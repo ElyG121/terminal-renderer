@@ -11,7 +11,7 @@ public:
     Renderer(int height, int width, int z_offset, int k);
 
     // The only public function the user needs to call
-    void render_scene(std::vector<std::unique_ptr<Shape>> &scene);
+    void render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_frames = -1);
 
     void set_light_direction(float lx, float ly, float lz);
 

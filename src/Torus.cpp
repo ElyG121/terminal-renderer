@@ -3,16 +3,19 @@
 
 Torus::Torus(float R1, float R2)
 {
-    float step = 0.05f;
-    vertices.reserve(16000);
+    const float step = 0.05f;
+    const int steps = static_cast<int>((2.0f * M_PI) / step + 0.5f);
+    vertices.reserve(steps * steps);
 
-    for (float theta = 0; theta < 2 * M_PI; theta += step)
+    for (int ti = 0; ti < steps; ++ti)
     {
+        float theta = ti * step;
         float costheta = cos(theta);
         float sintheta = sin(theta);
 
-        for (float phi = 0; phi < 2 * M_PI; phi += step)
+        for (int pi = 0; pi < steps; ++pi)
         {
+            float phi = pi * step;
             float cosphi = cos(phi);
             float sinphi = sin(phi);
 

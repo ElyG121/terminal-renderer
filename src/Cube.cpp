@@ -6,16 +6,17 @@ Cube::Cube(float edge_length)
 {
     // Calculate the half-extent for centering around (0,0,0)
     float half = edge_length / 2.0f;
+    const float step = 0.1f;
+    int steps = static_cast<int>(edge_length / step + 0.5f);
+    vertices.reserve((steps + 1) * (steps + 1) * 6);
 
-    // Number of steps is the full edge length divided by the 0.1 step size
-    int steps = edge_length * 10;
-    vertices.reserve(steps * steps * 6);
-
-    // Loop from -half to +half
-    for (float u = -half; u <= half; u += 0.1f)
+    // Loop from -half to +half using integer steps to avoid floating-point accumulation
+    for (int i = 0; i <= steps; ++i)
     {
-        for (float v = -half; v <= half; v += 0.1f)
+        float u = -half + i * step;
+        for (int j = 0; j <= steps; ++j)
         {
+            float v = -half + j * step;
             // Front and Back
             vertices.push_back(Vertex(u, v, half, 0, 0, 1));
             vertices.push_back(Vertex(u, v, -half, 0, 0, -1));

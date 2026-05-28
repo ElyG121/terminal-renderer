@@ -1,7 +1,6 @@
 #pragma once
-#include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 #include "Vertex.hpp"
 
 class Framebuffer
