@@ -1,5 +1,6 @@
 #include "Framebuffer.hpp"
 #include <algorithm>
+#include <cmath>
 
 int Framebuffer::width() const
 {
@@ -44,8 +45,11 @@ void Framebuffer::render_vertex(const Vertex &v)
 
     // --- B. PROJECTION MATH ---
     float rot_ooz = 1.0f / depth;
-    int screen_x = (int)(CENTER_X + (camera.focal_length * v.position.x * camera.char_aspect * rot_ooz) + 0.5f);
-    int screen_y = (int)(CENTER_Y + (camera.focal_length * v.position.y * rot_ooz) + 0.5f);
+    // Round to the nearest cell. std::floor rounds down even for negative values;
+    // a plain (int) cast rounds toward zero, which would pull points just off the
+    // left or top edge (e.g. -0.7) into column/row 0.
+    int screen_x = static_cast<int>(std::floor(CENTER_X + (camera.focal_length * v.position.x * camera.char_aspect * rot_ooz) + 0.5f));
+    int screen_y = static_cast<int>(std::floor(CENTER_Y + (camera.focal_length * v.position.y * rot_ooz) + 0.5f));
 
     int index = screen_y * WIDTH + screen_x;
 

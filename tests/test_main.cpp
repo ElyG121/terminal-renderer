@@ -291,6 +291,31 @@ static void test_renderer_draw()
                 "Drawing a cube should put visible characters in the framebuffer");
 }
 
+static void test_projection_rounding_at_edges()
+{
+    // Centre is column/row 2, and screen = 2 + x + 0.5 with this camera (focal 10, depth 10, aspect 1)
+    const Camera camera{10.0f, 10.0f, 0.1f, 1.0f};
+    const Vec3 facing_camera{0.0f, 0.0f, -1.0f};
+
+    // x = -2.7 projects to -0.2: just off the left edge. Rounding toward zero would give column 0.
+    Framebuffer left(ScreenSize{5, 5}, camera);
+    left.clear();
+    left.render_vertex(Vertex{{-2.7f, 0.0f, 0.0f}, facing_camera});
+    assert_eq(visible_column(left, 2), -1, "A point just off the left edge should not be drawn in column 0");
+
+    // y = -2.7 projects to -0.2: just off the top edge. Rounding toward zero would give row 0.
+    Framebuffer top(ScreenSize{5, 5}, camera);
+    top.clear();
+    top.render_vertex(Vertex{{0.0f, -2.7f, 0.0f}, facing_camera});
+    assert_eq(visible_column(top, 0), -1, "A point just off the top edge should not be drawn in row 0");
+
+    // x = -2.4 projects to 0.1: inside the screen, so it is still drawn in column 0
+    Framebuffer inside(ScreenSize{5, 5}, camera);
+    inside.clear();
+    inside.render_vertex(Vertex{{-2.4f, 0.0f, 0.0f}, facing_camera});
+    assert_eq(visible_column(inside, 2), 0, "A point just inside the left edge should be drawn in column 0");
+}
+
 static void test_terminal_output()
 {
     Framebuffer fb(ScreenSize{5, 5}, Camera{5.0f, 1.0f});
@@ -317,6 +342,7 @@ int main()
     test_mat3_rotation();
     test_framebuffer_render();
     test_camera_projection();
+    test_projection_rounding_at_edges();
     test_terminal_output();
     test_terminal_output_restores_cursor();
     test_fixed_timestep();
