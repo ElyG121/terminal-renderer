@@ -1,10 +1,13 @@
 #include <cmath>
 #include "Torus.hpp"
 
+// M_PI is a POSIX extension, not standard C++ (std::numbers::pi requires C++20)
+static constexpr float PI = 3.14159265358979323846f;
+
 Torus::Torus(float R1, float R2)
 {
     const float step = 0.05f;
-    const int steps = static_cast<int>((2.0f * M_PI) / step + 0.5f);
+    const int steps = static_cast<int>((2.0f * PI) / step + 0.5f);
     vertices.reserve(steps * steps);
 
     for (int ti = 0; ti < steps; ++ti)

@@ -52,6 +52,6 @@ test: $(TEST_TARGET)
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
-.PHONY: all run clean
+.PHONY: all run test clean
 
 -include $(OBJS:.o=.d)

@@ -6,7 +6,7 @@ A minimal ASCII-based 3D renderer for the terminal. It draws shapes with basic l
 
 - ASCII rasterization with per-vertex shading
 - Z-buffer depth handling
-- Rotating wireframe shapes: cube and torus
+- Rotating point-cloud shapes (sampled surface points with normals): cube and torus
 - Time-based animation using `std::chrono`
 - Optional frame limit support in `Renderer::render_scene`
 
