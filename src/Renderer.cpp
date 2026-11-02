@@ -4,8 +4,8 @@
 #include <chrono>
 #include <thread>
 
-Renderer::Renderer(int height, int width, int z_offset, int k)
-    : screen(height, width, z_offset, k), terminal(std::cout)
+Renderer::Renderer(const ScreenSize &size, const Camera &camera)
+    : screen(size, camera), terminal(std::cout)
 {
     terminal.begin(); // Clear the terminal ONCE at startup
 }

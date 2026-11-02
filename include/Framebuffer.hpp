@@ -1,13 +1,15 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "Camera.hpp"
 #include "Vec3.hpp"
 #include "Vertex.hpp"
 
 class Framebuffer
 {
 private:
-    const int HEIGHT, WIDTH, CENTER_X, CENTER_Y, K, Z_OFFSET;
+    const int HEIGHT, WIDTH, CENTER_X, CENTER_Y;
+    const Camera camera;
     const std::string SHADES;
 
     // Default light pointing towards the camera
@@ -20,12 +22,12 @@ private:
 
 public:
     /* Constructor */
-    Framebuffer(const int height, const int width, const int z_offset, const int k)
-        : HEIGHT(height), WIDTH(width),
-          CENTER_X(width / 2), CENTER_Y(height / 2), K(k), Z_OFFSET(z_offset),
+    Framebuffer(const ScreenSize &size, const Camera &camera)
+        : HEIGHT(size.height), WIDTH(size.width),
+          CENTER_X(size.width / 2), CENTER_Y(size.height / 2), camera(camera),
           SHADES(".,-~:;=!*#$@"),
-          buffer(height * width, ' '),
-          z_buffer(height * width, 0.0f)
+          buffer(size.height * size.width, ' '),
+          z_buffer(size.height * size.width, 0.0f)
     {
     }
 

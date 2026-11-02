@@ -1,4 +1,5 @@
 #pragma once
+#include "Camera.hpp"
 #include "Entity.hpp"
 #include "Framebuffer.hpp"
 #include "TerminalOutput.hpp"
@@ -7,7 +8,7 @@ class Renderer
 {
 public:
     // Initialize the renderer and its internal framebuffer
-    Renderer(int height, int width, int z_offset, int k);
+    Renderer(const ScreenSize &size, const Camera &camera = Camera{});
 
     // The only public function the user needs to call
     void render_scene(Scene &scene, int max_frames = -1);

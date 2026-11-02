@@ -35,20 +35,27 @@ void Framebuffer::clear()
 
 void Framebuffer::render_vertex(const Vertex &v)
 {
-    // --- A. PROJECTION MATH ---
-    float rot_ooz = 1.0f / (v.position.z + Z_OFFSET);
-    int screen_x = (int)(CENTER_X + (K * v.position.x * 2 * rot_ooz) + 0.5f);
-    int screen_y = (int)(CENTER_Y + (K * v.position.y * rot_ooz) + 0.5f);
+    // --- A. NEAR-PLANE CLIPPING ---
+    // Distance in front of the camera. At or behind the camera this is <= 0, and
+    // dividing by it would give infinite or flipped screen coordinates.
+    float depth = v.position.z + camera.distance;
+    if (depth < camera.near_plane)
+        return;
+
+    // --- B. PROJECTION MATH ---
+    float rot_ooz = 1.0f / depth;
+    int screen_x = (int)(CENTER_X + (camera.focal_length * v.position.x * camera.char_aspect * rot_ooz) + 0.5f);
+    int screen_y = (int)(CENTER_Y + (camera.focal_length * v.position.y * rot_ooz) + 0.5f);
 
     int index = screen_y * WIDTH + screen_x;
 
     // Bounds check
     if (screen_x >= 0 && screen_x < WIDTH && screen_y >= 0 && screen_y < HEIGHT)
     {
-        // --- B. Z-BUFFER CHECK ---
+        // --- C. Z-BUFFER CHECK ---
         if (rot_ooz > z_buffer[index])
         {
-            // --- C. DRAW TO BUFFERS ---
+            // --- D. DRAW TO BUFFERS ---
             z_buffer[index] = rot_ooz;
             buffer[index] = calculate_vertex_char(v);
         }

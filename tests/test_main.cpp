@@ -1,4 +1,5 @@
 #include "test_utils.hpp"
+#include "Camera.hpp"
 #include "Entity.hpp"
 #include "Framebuffer.hpp"
 #include "Mat3.hpp"
@@ -111,7 +112,7 @@ static void test_mat3_rotation()
 
 static void test_framebuffer_render()
 {
-    Framebuffer fb(5, 5, 5, 1);
+    Framebuffer fb(ScreenSize{5, 5}, Camera{5.0f, 1.0f});
     fb.set_light_direction({0.0f, 0.0f, -1.0f});
     fb.clear();
 
@@ -124,9 +125,51 @@ static void test_framebuffer_render()
     assert_true(chars[2 * 5 + 2] != ' ', "Vertex at the origin should be drawn in the centre cell");
 }
 
+// Returns the column of the first visible character in the given row, or -1 if the row is empty
+static int visible_column(const Framebuffer &fb, int row)
+{
+    for (int x = 0; x < fb.width(); ++x)
+    {
+        if (fb.chars()[row * fb.width() + x] != ' ')
+            return x;
+    }
+    return -1;
+}
+
+static void test_camera_projection()
+{
+    // A point at the origin projects to the centre cell
+    Framebuffer centre_fb(ScreenSize{5, 5}, Camera{5.0f, 1.0f});
+    centre_fb.clear();
+    centre_fb.render_vertex(Vertex{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}});
+    assert_eq(visible_column(centre_fb, 2), 2, "Origin should land in the centre column");
+
+    // Points at or behind the camera are clipped instead of dividing by zero or flipping
+    Framebuffer clip_fb(ScreenSize{5, 5}, Camera{5.0f, 1.0f});
+    clip_fb.clear();
+    clip_fb.render_vertex(Vertex{{0.0f, 0.0f, -5.0f}, {0.0f, 0.0f, -1.0f}});  // exactly at the camera
+    clip_fb.render_vertex(Vertex{{0.0f, 0.0f, -10.0f}, {0.0f, 0.0f, -1.0f}}); // behind the camera
+    clip_fb.render_vertex(Vertex{{0.0f, 0.0f, -4.95f}, {0.0f, 0.0f, -1.0f}}); // in front, but inside the near plane
+    const std::vector<char> &chars = clip_fb.chars();
+    assert_true(std::all_of(chars.begin(), chars.end(), [](char c) { return c == ' '; }),
+                "Points at, behind, or too close to the camera should not be drawn");
+
+    // char_aspect stretches x: offset = focal_length * x * char_aspect / depth
+    // centre column 10, focal length 10, depth 10, x = 1 -> offset of char_aspect columns
+    Framebuffer wide_fb(ScreenSize{21, 5}, Camera{10.0f, 10.0f, 0.1f, 2.0f});
+    wide_fb.clear();
+    wide_fb.render_vertex(Vertex{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}});
+    assert_eq(visible_column(wide_fb, 2), 12, "With char_aspect 2, x = 1 should be 2 columns right of centre");
+
+    Framebuffer square_fb(ScreenSize{21, 5}, Camera{10.0f, 10.0f, 0.1f, 1.0f});
+    square_fb.clear();
+    square_fb.render_vertex(Vertex{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}});
+    assert_eq(visible_column(square_fb, 2), 11, "With char_aspect 1, x = 1 should be 1 column right of centre");
+}
+
 static void test_terminal_output()
 {
-    Framebuffer fb(5, 5, 5, 1);
+    Framebuffer fb(ScreenSize{5, 5}, Camera{5.0f, 1.0f});
     fb.clear();
     fb.render_vertex(Vertex{{0.0f, 0.0f, 10.0f}, {0.0f, 0.0f, -1.0f}});
 
@@ -149,6 +192,7 @@ int main()
     test_shared_mesh();
     test_mat3_rotation();
     test_framebuffer_render();
+    test_camera_projection();
     test_terminal_output();
 
     std::cout << "All tests passed!\n";

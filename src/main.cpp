@@ -6,7 +6,8 @@
 int main()
 {
     // 1. Initialize your new rendering engine
-    Renderer engine(24, 80, 40, 25);
+    // Default camera: distance 40, focal length 25 (see Camera.hpp)
+    Renderer engine(ScreenSize{80, 24}, Camera{});
     engine.set_light_direction({0.7f, -1.0f, -0.5f});
     Scene scene;
 
