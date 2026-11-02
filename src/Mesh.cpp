@@ -13,26 +13,41 @@ Mesh make_cube(float edge_length)
     float half = edge_length / 2.0f;
     const float step = 0.1f;
     int steps = static_cast<int>(edge_length / step + 0.5f);
-    mesh.vertices.reserve((steps + 1) * (steps + 1) * 6);
+
+    // Each face is a (steps + 1) x (steps + 1) grid, but faces share their edges.
+    // Every edge point is kept on exactly one face: front/back keep all their points,
+    // right/left skip the rows shared with front/back, and top/bottom skip both.
+    // Total unique points: 6 * steps^2 + 2
+    mesh.vertices.reserve(6 * steps * steps + 2);
 
     // Loop from -half to +half using integer steps to avoid floating-point accumulation
     for (int i = 0; i <= steps; ++i)
     {
         float u = -half + i * step;
+        bool u_on_edge = (i == 0 || i == steps);
+
         for (int j = 0; j <= steps; ++j)
         {
             float v = -half + j * step;
-            // Front and Back
+            bool v_on_edge = (j == 0 || j == steps);
+
+            // Front and Back (z = +/-half): every point
             mesh.vertices.push_back(Vertex{{u, v, half}, {0, 0, 1}});
             mesh.vertices.push_back(Vertex{{u, v, -half}, {0, 0, -1}});
 
-            // Right and Left
-            mesh.vertices.push_back(Vertex{{half, u, v}, {1, 0, 0}});
-            mesh.vertices.push_back(Vertex{{-half, u, v}, {-1, 0, 0}});
+            // Right and Left (x = +/-half): v is z, so its ends are on front/back
+            if (!v_on_edge)
+            {
+                mesh.vertices.push_back(Vertex{{half, u, v}, {1, 0, 0}});
+                mesh.vertices.push_back(Vertex{{-half, u, v}, {-1, 0, 0}});
+            }
 
-            // Top and Bottom
-            mesh.vertices.push_back(Vertex{{u, half, v}, {0, 1, 0}});
-            mesh.vertices.push_back(Vertex{{u, -half, v}, {0, -1, 0}});
+            // Top and Bottom (y = +/-half): u is x (ends on right/left), v is z (ends on front/back)
+            if (!u_on_edge && !v_on_edge)
+            {
+                mesh.vertices.push_back(Vertex{{u, half, v}, {0, 1, 0}});
+                mesh.vertices.push_back(Vertex{{u, -half, v}, {0, -1, 0}});
+            }
         }
     }
 

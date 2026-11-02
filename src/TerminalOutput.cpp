@@ -4,9 +4,20 @@ TerminalOutput::TerminalOutput(std::ostream &out) : out(out)
 {
 }
 
+TerminalOutput::~TerminalOutput()
+{
+    if (started)
+    {
+        out << "\x1b[0m\x1b[?25h"; // Reset text attributes and show the cursor again
+        out.flush();
+    }
+}
+
 void TerminalOutput::begin()
 {
-    out << "\x1b[2J"; // Clear the whole screen once at startup
+    out << "\x1b[?25l"; // Hide the cursor so it doesn't flicker across the frame
+    out << "\x1b[2J";   // Clear the whole screen once at startup
+    started = true;
 }
 
 void TerminalOutput::present(const Framebuffer &fb)

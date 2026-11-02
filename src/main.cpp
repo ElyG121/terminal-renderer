@@ -4,9 +4,19 @@
 #include "Mesh.hpp"
 #include "TerminalOutput.hpp"
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <thread>
+
+// Set to 0 by Ctrl+C. sig_atomic_t is the only type a signal handler may safely write,
+// and volatile stops the compiler from assuming it never changes inside the loop.
+static volatile std::sig_atomic_t running = 1;
+
+static void handle_sigint(int)
+{
+    running = 0;
+}
 
 int main()
 {
@@ -42,7 +52,10 @@ int main()
 
     // 3. Main loop: main owns time and output, the renderer only draws
     TerminalOutput terminal(std::cout);
-    terminal.begin(); // Clear the terminal ONCE at startup
+    terminal.begin(); // Hide the cursor and clear the terminal ONCE at startup
+
+    // Ctrl+C ends the loop normally, so terminal's destructor can restore the cursor
+    std::signal(SIGINT, handle_sigint);
 
     FixedTimestep timestep(1.0f / 60.0f);                      // Physics at 60 Hz
     const auto frame_duration = std::chrono::milliseconds(33); // Drawing at ~30 FPS
@@ -50,7 +63,7 @@ int main()
     using clock = std::chrono::steady_clock;
     auto previous = clock::now();
 
-    while (true)
+    while (running)
     {
         auto frame_start = clock::now();
         float frame_seconds = std::chrono::duration<float>(frame_start - previous).count();

@@ -15,7 +15,9 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <sstream>
+#include <tuple>
 
 static void assert_vec_near(const Vec3 &actual, const Vec3 &expected, const std::string &message)
 {
@@ -76,8 +78,18 @@ static void test_meshes()
 {
     Mesh cube = make_cube(2.0f);
 
-    // Edge 2.0 with a point every 0.1 gives 20 steps: 21 x 21 points per face, 6 faces
-    assert_eq(static_cast<int>(cube.vertices.size()), 21 * 21 * 6, "Cube should have (steps + 1)^2 * 6 vertices");
+    // Edge 2.0 with a point every 0.1 gives 20 steps. Six 21 x 21 face grids would be 2646 points,
+    // but faces share edges; counting each shared point once gives 6 * 20^2 + 2 = 2402
+    assert_eq(static_cast<int>(cube.vertices.size()), 6 * 20 * 20 + 2, "Cube should have 6 * steps^2 + 2 unique vertices");
+
+    // No two vertices at the same position. Positions are rounded to a fine grid first,
+    // because the same edge point can be computed in slightly different float ways.
+    std::set<std::tuple<long, long, long>> positions;
+    for (const Vertex &v : cube.vertices)
+    {
+        positions.insert({std::lround(v.position.x * 1000.0f), std::lround(v.position.y * 1000.0f), std::lround(v.position.z * 1000.0f)});
+    }
+    assert_eq(static_cast<int>(positions.size()), static_cast<int>(cube.vertices.size()), "Cube should have no duplicate vertices");
 
     for (const Vertex &v : cube.vertices)
     {
@@ -167,6 +179,25 @@ static void test_camera_projection()
     square_fb.clear();
     square_fb.render_vertex(Vertex{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}});
     assert_eq(visible_column(square_fb, 2), 11, "With char_aspect 1, x = 1 should be 1 column right of centre");
+}
+
+static void test_terminal_output_restores_cursor()
+{
+    std::ostringstream captured;
+    {
+        TerminalOutput terminal(captured);
+        terminal.begin();
+        assert_true(captured.str().find("\x1b[?25l") != std::string::npos, "begin() should hide the cursor");
+    } // terminal is destroyed here
+
+    assert_true(captured.str().find("\x1b[?25h") != std::string::npos, "Destructor should show the cursor again");
+
+    // Without begin(), nothing was changed, so nothing should be restored
+    std::ostringstream untouched;
+    {
+        TerminalOutput terminal(untouched);
+    }
+    assert_true(untouched.str().empty(), "Destructor should not write anything if begin() was never called");
 }
 
 static void test_fixed_timestep()
@@ -287,6 +318,7 @@ int main()
     test_framebuffer_render();
     test_camera_projection();
     test_terminal_output();
+    test_terminal_output_restores_cursor();
     test_fixed_timestep();
     test_fixed_timestep_is_deterministic();
     test_renderer_draw();
