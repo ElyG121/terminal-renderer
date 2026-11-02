@@ -1,31 +1,35 @@
 #include "Renderer.hpp"
-#include "ShapeFactory.hpp"
-#include <vector>
+#include "Entity.hpp"
+#include "Mesh.hpp"
+#include <memory>
 
 int main()
 {
     // 1. Initialize your new rendering engine
     Renderer engine(24, 80, 40, 25);
     engine.set_light_direction({0.7f, -1.0f, -0.5f});
-    std::vector<std::unique_ptr<Shape>> scene;
+    Scene scene;
 
     // 2. Setup Scene
-    auto torus = ShapeFactory::createTorus(2.5f, 5.0f);
-    torus->setPosition({-14.0f, 0.0f, 0.0f});
-    torus->setAngularVelocity({1.0f, 0.5f, 0.5f});
+    Entity torus;
+    torus.mesh = std::make_shared<const Mesh>(make_torus(2.5f, 5.0f));
+    torus.transform.position = {-14.0f, 0.0f, 0.0f};
+    torus.motion.angular_velocity = {1.0f, 0.5f, 0.5f};
     scene.push_back(std::move(torus));
 
-    auto cube = ShapeFactory::createCube(9.0f);
-    cube->setPosition({14.0f, -8.0f, 0.0f});
-    cube->setAngularVelocity({0.5f, 1.0f, 0.0f});
+    Entity cube;
+    cube.mesh = std::make_shared<const Mesh>(make_cube(9.0f));
+    cube.transform.position = {14.0f, -8.0f, 0.0f};
+    cube.motion.angular_velocity = {0.5f, 1.0f, 0.0f};
 
-    cube->update_behavior = [](Shape &s, float d)
+    // Gravity plus a bounce that loses 15% of its speed
+    cube.behavior = [](Entity &e, float d)
     {
-        s.velocity.y += 15.0f * d;
-        if (s.position.y > 8.0f)
+        e.motion.velocity.y += 15.0f * d;
+        if (e.transform.position.y > 8.0f)
         {
-            s.position.y = 8.0f;
-            s.velocity.y = s.velocity.y * -0.85f;
+            e.transform.position.y = 8.0f;
+            e.motion.velocity.y = e.motion.velocity.y * -0.85f;
         }
     };
     scene.push_back(std::move(cube));

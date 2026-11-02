@@ -10,7 +10,7 @@ Renderer::Renderer(int height, int width, int z_offset, int k)
     terminal.begin(); // Clear the terminal ONCE at startup
 }
 
-void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_frames)
+void Renderer::render_scene(Scene &scene, int max_frames)
 {
     using clock = std::chrono::steady_clock;
     const auto frame_duration = std::chrono::milliseconds(33);
@@ -26,10 +26,10 @@ void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_
 
         clear_screen();
 
-        for (const auto &shape : scene)
+        for (Entity &entity : scene)
         {
-            shape->update(delta);
-            render_shape(shape);
+            entity.update(delta);
+            render_entity(entity);
         }
 
         display();
@@ -44,16 +44,20 @@ void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_
     }
 }
 
-void Renderer::render_shape(const std::unique_ptr<Shape> &shape_ptr)
+void Renderer::render_entity(const Entity &entity)
 {
-    // Build the rotation once per shape, not once per vertex
-    const Mat3 rotation = Mat3::rotation(shape_ptr->rotation);
+    // An entity without geometry has nothing to draw
+    if (!entity.mesh)
+        return;
 
-    for (const Vertex &v : shape_ptr->vertices)
+    // Build the rotation once per entity, not once per vertex
+    const Mat3 rotation = Mat3::rotation(entity.transform.rotation);
+
+    for (const Vertex &v : entity.mesh->vertices)
     {
         // Rotate around the shape's centre, then move it into the world.
         // Normals are only rotated: they are directions, not positions.
-        Vertex world_v{rotation * v.position + shape_ptr->position, rotation * v.normal};
+        Vertex world_v{rotation * v.position + entity.transform.position, rotation * v.normal};
 
         screen.render_vertex(world_v);
     }

@@ -1,7 +1,5 @@
 #pragma once
-#include <vector>
-#include <memory>
-#include "Shape.hpp"
+#include "Entity.hpp"
 #include "Framebuffer.hpp"
 #include "TerminalOutput.hpp"
 
@@ -12,7 +10,7 @@ public:
     Renderer(int height, int width, int z_offset, int k);
 
     // The only public function the user needs to call
-    void render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_frames = -1);
+    void render_scene(Scene &scene, int max_frames = -1);
 
     void set_light_direction(const Vec3 &direction);
 
@@ -25,5 +23,5 @@ private:
     TerminalOutput terminal; // Writes the screen to the terminal (declared after screen: members init in this order)
 
     // Hidden internal rendering pipeline
-    void render_shape(const std::unique_ptr<Shape> &shape_ptr);
+    void render_entity(const Entity &entity);
 };

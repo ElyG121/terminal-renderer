@@ -1,16 +1,15 @@
 #include "test_utils.hpp"
-#include "Cube.hpp"
+#include "Entity.hpp"
 #include "Framebuffer.hpp"
 #include "Mat3.hpp"
-#include "Shape.hpp"
-#include "ShapeFactory.hpp"
+#include "Mesh.hpp"
 #include "TerminalOutput.hpp"
-#include "Torus.hpp"
 #include "Vec3.hpp"
 #include "Vertex.hpp"
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -36,27 +35,62 @@ static void test_vec3()
     assert_vec_near(normalized(Vec3{}), {0.0f, 0.0f, 0.0f}, "Normalizing a zero vector should leave it unchanged");
 }
 
-static void test_shape_update()
+static void test_entity_update()
 {
-    Shape shape;
-    shape.setPosition({0.0f, 0.0f, 0.0f});
-    shape.setVelocity({1.0f, -2.0f, 3.0f});
-    shape.setAngularVelocity({0.5f, 1.0f, -0.5f});
-    shape.update(2.0f);
+    Entity e;
+    e.motion.velocity = {1.0f, -2.0f, 3.0f};
+    e.motion.angular_velocity = {0.5f, 1.0f, -0.5f};
+    e.update(2.0f);
 
-    assert_vec_near(shape.position, {2.0f, -4.0f, 6.0f}, "Shape position should update from velocity");
-    assert_vec_near(shape.rotation, {1.0f, 2.0f, -1.0f}, "Shape rotation should update from angular velocity");
+    assert_vec_near(e.transform.position, {2.0f, -4.0f, 6.0f}, "Entity position should update from velocity");
+    assert_vec_near(e.transform.rotation, {1.0f, 2.0f, -1.0f}, "Entity rotation should update from angular velocity");
+
+    // The behavior runs before the motion is applied, so a velocity change takes effect in the same update
+    Entity falling;
+    falling.behavior = [](Entity &self, float delta)
+    { self.motion.velocity.y += 10.0f * delta; };
+    falling.update(0.5f);
+
+    assert_near(falling.motion.velocity.y, 5.0f, 1e-4f, "Behavior should change velocity");
+    assert_near(falling.transform.position.y, 2.5f, 1e-4f, "Position should use the velocity set by the behavior");
 }
 
-static void test_shape_factory()
+static void test_shared_mesh()
 {
-    auto cube = ShapeFactory::createCube(2.0f);
-    auto torus = ShapeFactory::createTorus(1.0f, 2.0f);
+    auto mesh = std::make_shared<const Mesh>(make_cube(1.0f));
 
-    assert_true(static_cast<bool>(cube), "createCube should return a valid unique_ptr");
-    assert_true(static_cast<bool>(torus), "createTorus should return a valid unique_ptr");
-    assert_true(!cube->vertices.empty(), "Cube should have vertices");
-    assert_true(!torus->vertices.empty(), "Torus should have vertices");
+    Entity a;
+    a.mesh = mesh;
+    Entity b;
+    b.mesh = mesh;
+
+    // One mesh, three owners: this variable plus the two entities. No vertices were copied.
+    assert_eq(static_cast<int>(mesh.use_count()), 3, "Both entities should share the same mesh");
+    assert_true(a.mesh.get() == b.mesh.get(), "Both entities should point to the same Mesh object");
+}
+
+static void test_meshes()
+{
+    Mesh cube = make_cube(2.0f);
+
+    // Edge 2.0 with a point every 0.1 gives 20 steps: 21 x 21 points per face, 6 faces
+    assert_eq(static_cast<int>(cube.vertices.size()), 21 * 21 * 6, "Cube should have (steps + 1)^2 * 6 vertices");
+
+    for (const Vertex &v : cube.vertices)
+    {
+        // A point is on the surface of a cube centred at the origin when its largest coordinate is half the edge
+        float largest = std::max({std::fabs(v.position.x), std::fabs(v.position.y), std::fabs(v.position.z)});
+        assert_near(largest, 1.0f, 1e-4f, "Cube vertex should lie on the cube's surface");
+        assert_near(length(v.normal), 1.0f, 1e-4f, "Cube normal should be unit length");
+    }
+
+    Mesh torus = make_torus(1.0f, 2.0f);
+    assert_true(!torus.vertices.empty(), "Torus should have vertices");
+
+    for (const Vertex &v : torus.vertices)
+    {
+        assert_near(length(v.normal), 1.0f, 1e-4f, "Torus normal should be unit length");
+    }
 }
 
 static void test_mat3_rotation()
@@ -110,8 +144,9 @@ static void test_terminal_output()
 int main()
 {
     test_vec3();
-    test_shape_update();
-    test_shape_factory();
+    test_meshes();
+    test_entity_update();
+    test_shared_mesh();
     test_mat3_rotation();
     test_framebuffer_render();
     test_terminal_output();
