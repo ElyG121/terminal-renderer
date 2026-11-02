@@ -1,6 +1,6 @@
 #include "Renderer.hpp"
+#include "Mat3.hpp"
 #include <iostream>
-#include <cmath>
 #include <chrono>
 #include <thread>
 
@@ -46,32 +46,23 @@ void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_
 
 void Renderer::render_shape(const std::unique_ptr<Shape> &shape_ptr)
 {
-    float cx = cos(shape_ptr->rot_x);
-    float sx = sin(shape_ptr->rot_x);
-    float cy = cos(shape_ptr->rot_y);
-    float sy = sin(shape_ptr->rot_y);
-    float cz = cos(shape_ptr->rot_z);
-    float sz = sin(shape_ptr->rot_z);
+    // Build the rotation once per shape, not once per vertex
+    const Mat3 rotation = Mat3::rotation(shape_ptr->rotation);
 
     for (const Vertex &v : shape_ptr->vertices)
     {
-        // 1. The vertex handles its own rotation!
-        Vertex rot_v = v.rotate(cx, sx, cy, sy, cz, sz);
+        // Rotate around the shape's centre, then move it into the world.
+        // Normals are only rotated: they are directions, not positions.
+        Vertex world_v{rotation * v.position + shape_ptr->position, rotation * v.normal};
 
-        // 2. The renderer handles world translation
-        rot_v.x += shape_ptr->world_x;
-        rot_v.y += shape_ptr->world_y;
-        rot_v.z += shape_ptr->world_z;
-
-        // 3. The renderer draws to the screen
-        screen.render_vertex(rot_v);
+        screen.render_vertex(world_v);
     }
 }
 
-void Renderer::set_light_direction(float lx, float ly, float lz)
+void Renderer::set_light_direction(const Vec3 &direction)
 {
     // Delegate the math to the internal framebuffer
-    screen.set_light_direction(lx, ly, lz);
+    screen.set_light_direction(direction);
 }
 
 void Renderer::clear_screen()

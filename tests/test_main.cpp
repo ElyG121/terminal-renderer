@@ -1,10 +1,12 @@
 #include "test_utils.hpp"
 #include "Cube.hpp"
 #include "Framebuffer.hpp"
+#include "Mat3.hpp"
 #include "Shape.hpp"
 #include "ShapeFactory.hpp"
 #include "TerminalOutput.hpp"
 #include "Torus.hpp"
+#include "Vec3.hpp"
 #include "Vertex.hpp"
 
 #include <algorithm>
@@ -13,20 +15,37 @@
 #include <memory>
 #include <sstream>
 
+static void assert_vec_near(const Vec3 &actual, const Vec3 &expected, const std::string &message)
+{
+    assert_near(actual.x, expected.x, 1e-4f, message + " (x)");
+    assert_near(actual.y, expected.y, 1e-4f, message + " (y)");
+    assert_near(actual.z, expected.z, 1e-4f, message + " (z)");
+}
+
+static void test_vec3()
+{
+    Vec3 a{1.0f, 2.0f, 3.0f};
+    Vec3 b{4.0f, -5.0f, 6.0f};
+
+    assert_vec_near(a + b, {5.0f, -3.0f, 9.0f}, "Vec3 addition");
+    assert_vec_near(a - b, {-3.0f, 7.0f, -3.0f}, "Vec3 subtraction");
+    assert_vec_near(a * 2.0f, {2.0f, 4.0f, 6.0f}, "Vec3 scalar multiplication");
+    assert_near(dot(a, b), 12.0f, 1e-4f, "Vec3 dot product");
+    assert_near(length(Vec3{3.0f, 4.0f, 0.0f}), 5.0f, 1e-4f, "Vec3 length");
+    assert_vec_near(normalized(Vec3{0.0f, 0.0f, 5.0f}), {0.0f, 0.0f, 1.0f}, "Vec3 normalized");
+    assert_vec_near(normalized(Vec3{}), {0.0f, 0.0f, 0.0f}, "Normalizing a zero vector should leave it unchanged");
+}
+
 static void test_shape_update()
 {
     Shape shape;
-    shape.setPosition(0.0f, 0.0f, 0.0f);
-    shape.setVelocity(1.0f, -2.0f, 3.0f);
-    shape.setAngularVelocity(0.5f, 1.0f, -0.5f);
+    shape.setPosition({0.0f, 0.0f, 0.0f});
+    shape.setVelocity({1.0f, -2.0f, 3.0f});
+    shape.setAngularVelocity({0.5f, 1.0f, -0.5f});
     shape.update(2.0f);
 
-    assert_near(shape.world_x, 2.0f, 1e-4f, "Shape world_x should update from velocity");
-    assert_near(shape.world_y, -4.0f, 1e-4f, "Shape world_y should update from velocity");
-    assert_near(shape.world_z, 6.0f, 1e-4f, "Shape world_z should update from velocity");
-    assert_near(shape.rot_x, 1.0f, 1e-4f, "Shape rot_x should update from angular velocity");
-    assert_near(shape.rot_y, 2.0f, 1e-4f, "Shape rot_y should update from angular velocity");
-    assert_near(shape.rot_z, -1.0f, 1e-4f, "Shape rot_z should update from angular velocity");
+    assert_vec_near(shape.position, {2.0f, -4.0f, 6.0f}, "Shape position should update from velocity");
+    assert_vec_near(shape.rotation, {1.0f, 2.0f, -1.0f}, "Shape rotation should update from angular velocity");
 }
 
 static void test_shape_factory()
@@ -40,33 +59,29 @@ static void test_shape_factory()
     assert_true(!torus->vertices.empty(), "Torus should have vertices");
 }
 
-static void test_vertex_rotate()
+static void test_mat3_rotation()
 {
-    Vertex input(0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-    float cx = 0.0f;
-    float sx = 1.0f;
-    float cy = 1.0f;
-    float sy = 0.0f;
-    float cz = 1.0f;
-    float sz = 0.0f;
+    // 90 degrees around X turns +Y into +Z
+    Mat3 rx = Mat3::rotation({1.5707963f, 0.0f, 0.0f});
+    assert_vec_near(rx * Vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, "90 degree X rotation should turn +Y into +Z");
 
-    Vertex output = input.rotate(cx, sx, cy, sy, cz, sz);
+    // Regression: values captured from the old Vertex::rotate before it was removed,
+    // so the animation is guaranteed to look the same after the refactor
+    Mat3 r = Mat3::rotation({0.3f, 1.1f, -0.7f});
+    assert_vec_near(r * Vec3{1.0f, 2.0f, 3.0f}, {3.363120f, -1.493731f, 0.676897f}, "Rotation should match old Vertex::rotate position");
+    assert_vec_near(r * Vec3{0.6f, 0.0f, 0.8f}, {0.576805f, -0.794941f, -0.188055f}, "Rotation should match old Vertex::rotate normal");
 
-    assert_near(output.x, 0.0f, 1e-4f, "Rotated vertex x should remain 0");
-    assert_near(output.y, 0.0f, 1e-4f, "Rotated vertex y should become 0 after x-axis rotation");
-    assert_near(output.z, 1.0f, 1e-4f, "Rotated vertex z should become 1 after x-axis rotation");
-    assert_near(output.nx, 0.0f, 1e-4f, "Rotated normal nx should remain 0");
-    assert_near(output.ny, 0.0f, 1e-4f, "Rotated normal ny should become 0 after x-axis rotation");
-    assert_near(output.nz, 1.0f, 1e-4f, "Rotated normal nz should become 1 after x-axis rotation");
+    // Rotations preserve length, so normals stay unit length
+    assert_near(length(r * Vec3{0.6f, 0.0f, 0.8f}), 1.0f, 1e-4f, "Rotation should preserve vector length");
 }
 
 static void test_framebuffer_render()
 {
     Framebuffer fb(5, 5, 5, 1);
-    fb.set_light_direction(0.0f, 0.0f, -1.0f);
+    fb.set_light_direction({0.0f, 0.0f, -1.0f});
     fb.clear();
 
-    Vertex v(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, -1.0f);
+    Vertex v{{0.0f, 0.0f, 10.0f}, {0.0f, 0.0f, -1.0f}};
     fb.render_vertex(v);
 
     // The buffer can be inspected directly, no stdout capture needed
@@ -79,7 +94,7 @@ static void test_terminal_output()
 {
     Framebuffer fb(5, 5, 5, 1);
     fb.clear();
-    fb.render_vertex(Vertex(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, -1.0f));
+    fb.render_vertex(Vertex{{0.0f, 0.0f, 10.0f}, {0.0f, 0.0f, -1.0f}});
 
     std::ostringstream captured;
     TerminalOutput terminal(captured);
@@ -94,9 +109,10 @@ static void test_terminal_output()
 
 int main()
 {
+    test_vec3();
     test_shape_update();
     test_shape_factory();
-    test_vertex_rotate();
+    test_mat3_rotation();
     test_framebuffer_render();
     test_terminal_output();
 

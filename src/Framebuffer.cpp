@@ -1,6 +1,5 @@
 #include "Framebuffer.hpp"
 #include <algorithm>
-#include <cmath>
 
 int Framebuffer::width() const
 {
@@ -17,15 +16,13 @@ const std::vector<char> &Framebuffer::chars() const
     return buffer;
 }
 
-void Framebuffer::set_light_direction(float lx, float ly, float lz)
+void Framebuffer::set_light_direction(const Vec3 &direction)
 {
-    // Normalize the vector so the dot product stays within the [-1, 1] range
-    float length = std::sqrt(lx * lx + ly * ly + lz * lz);
-    if (length != 0.0f)
+    // Normalize the vector so the dot product stays within the [-1, 1] range.
+    // A zero vector has no direction, so keep the current light.
+    if (length(direction) != 0.0f)
     {
-        light_x = lx / length;
-        light_y = ly / length;
-        light_z = lz / length;
+        light = normalized(direction);
     }
 }
 
@@ -39,9 +36,9 @@ void Framebuffer::clear()
 void Framebuffer::render_vertex(const Vertex &v)
 {
     // --- A. PROJECTION MATH ---
-    float rot_ooz = 1.0f / (v.z + Z_OFFSET);
-    int screen_x = (int)(CENTER_X + (K * v.x * 2 * rot_ooz) + 0.5f);
-    int screen_y = (int)(CENTER_Y + (K * v.y * rot_ooz) + 0.5f);
+    float rot_ooz = 1.0f / (v.position.z + Z_OFFSET);
+    int screen_x = (int)(CENTER_X + (K * v.position.x * 2 * rot_ooz) + 0.5f);
+    int screen_y = (int)(CENTER_Y + (K * v.position.y * rot_ooz) + 0.5f);
 
     int index = screen_y * WIDTH + screen_x;
 
@@ -61,7 +58,7 @@ void Framebuffer::render_vertex(const Vertex &v)
 char Framebuffer::calculate_vertex_char(const Vertex &v) const
 {
     // Calculate the dot product of the vertex normal and the light vector
-    float luminance = v.nx * light_x + v.ny * light_y + v.nz * light_z;
+    float luminance = dot(v.normal, light);
 
     if (luminance < 0)
         luminance = 0; // Clamp negative light to 0

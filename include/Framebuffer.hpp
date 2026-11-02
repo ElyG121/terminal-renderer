@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "Vec3.hpp"
 #include "Vertex.hpp"
 
 class Framebuffer
@@ -10,9 +11,7 @@ private:
     const std::string SHADES;
 
     // Default light pointing towards the camera
-    float light_x = 0.0f;
-    float light_y = 0.0f;
-    float light_z = -1.0f;
+    Vec3 light{0.0f, 0.0f, -1.0f};
 
     std::vector<char> buffer;
     std::vector<float> z_buffer;
@@ -39,5 +38,5 @@ public:
 
     void render_vertex(const Vertex &v);
 
-    void set_light_direction(float lx, float ly, float lz);
+    void set_light_direction(const Vec3 &direction);
 };

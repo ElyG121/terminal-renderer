@@ -18,16 +18,16 @@ Cube::Cube(float edge_length)
         {
             float v = -half + j * step;
             // Front and Back
-            vertices.push_back(Vertex(u, v, half, 0, 0, 1));
-            vertices.push_back(Vertex(u, v, -half, 0, 0, -1));
+            vertices.push_back(Vertex{{u, v, half}, {0, 0, 1}});
+            vertices.push_back(Vertex{{u, v, -half}, {0, 0, -1}});
 
             // Right and Left
-            vertices.push_back(Vertex(half, u, v, 1, 0, 0));
-            vertices.push_back(Vertex(-half, u, v, -1, 0, 0));
+            vertices.push_back(Vertex{{half, u, v}, {1, 0, 0}});
+            vertices.push_back(Vertex{{-half, u, v}, {-1, 0, 0}});
 
             // Top and Bottom
-            vertices.push_back(Vertex(u, half, v, 0, 1, 0));
-            vertices.push_back(Vertex(u, -half, v, 0, -1, 0));
+            vertices.push_back(Vertex{{u, half, v}, {0, 1, 0}});
+            vertices.push_back(Vertex{{u, -half, v}, {0, -1, 0}});
         }
     }
 }

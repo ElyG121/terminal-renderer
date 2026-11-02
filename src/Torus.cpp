@@ -33,7 +33,7 @@ Torus::Torus(float R1, float R2)
             float ny = sintheta;
             float nz = costheta * sinphi;
 
-            vertices.push_back(Vertex(x, y, z, nx, ny, nz));
+            vertices.push_back(Vertex{{x, y, z}, {nx, ny, nz}});
         }
     }
 }
