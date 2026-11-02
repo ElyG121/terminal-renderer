@@ -3,9 +3,11 @@
 #include "Framebuffer.hpp"
 #include "Shape.hpp"
 #include "ShapeFactory.hpp"
+#include "TerminalOutput.hpp"
 #include "Torus.hpp"
 #include "Vertex.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -67,15 +69,27 @@ static void test_framebuffer_render()
     Vertex v(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, -1.0f);
     fb.render_vertex(v);
 
+    // The buffer can be inspected directly, no stdout capture needed
+    const std::vector<char> &chars = fb.chars();
+    assert_eq(static_cast<int>(chars.size()), 5 * 5, "Framebuffer should hold width * height chars");
+    assert_true(chars[2 * 5 + 2] != ' ', "Vertex at the origin should be drawn in the centre cell");
+}
+
+static void test_terminal_output()
+{
+    Framebuffer fb(5, 5, 5, 1);
+    fb.clear();
+    fb.render_vertex(Vertex(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, -1.0f));
+
     std::ostringstream captured;
-    auto *old_buf = std::cout.rdbuf(captured.rdbuf());
-    fb.display();
-    std::cout.rdbuf(old_buf);
+    TerminalOutput terminal(captured);
+    terminal.present(fb);
 
     std::string output = captured.str();
-    assert_true(!output.empty(), "Framebuffer display output should not be empty");
-    assert_eq(static_cast<int>(output.size()), 5 * 6, "Framebuffer output should have five rows with newlines");
-    assert_true(output.find_first_not_of(" \n") != std::string::npos, "Framebuffer should render at least one visible character");
+    assert_true(output.rfind("\x1b[H", 0) == 0, "Output should start with the cursor-home escape code");
+    assert_eq(static_cast<int>(std::count(output.begin(), output.end(), '\n')), 5, "Output should have one newline per row");
+    assert_eq(static_cast<int>(output.size()), 3 + 5 * 6, "Output should be the escape code plus five rows with newlines");
+    assert_true(output.find_first_not_of(" \n", 3) != std::string::npos, "Output should contain at least one visible character");
 }
 
 int main()
@@ -84,6 +98,7 @@ int main()
     test_shape_factory();
     test_vertex_rotate();
     test_framebuffer_render();
+    test_terminal_output();
 
     std::cout << "All tests passed!\n";
     return 0;

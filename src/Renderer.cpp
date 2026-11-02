@@ -5,9 +5,9 @@
 #include <thread>
 
 Renderer::Renderer(int height, int width, int z_offset, int k)
-    : screen(height, width, z_offset, k)
+    : screen(height, width, z_offset, k), terminal(std::cout)
 {
-    std::cout << "\x1b[2J"; // Clear the terminal ONCE at startup
+    terminal.begin(); // Clear the terminal ONCE at startup
 }
 
 void Renderer::render_scene(std::vector<std::unique_ptr<Shape>> &scene, int max_frames)
@@ -81,5 +81,5 @@ void Renderer::clear_screen()
 
 void Renderer::display()
 {
-    screen.display();
+    terminal.present(screen);
 }

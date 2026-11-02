@@ -1,7 +1,21 @@
 #include "Framebuffer.hpp"
 #include <algorithm>
-#include <cmath> // Needed for std::sqrt
-#include <iostream>
+#include <cmath>
+
+int Framebuffer::width() const
+{
+    return WIDTH;
+}
+
+int Framebuffer::height() const
+{
+    return HEIGHT;
+}
+
+const std::vector<char> &Framebuffer::chars() const
+{
+    return buffer;
+}
 
 void Framebuffer::set_light_direction(float lx, float ly, float lz)
 {
@@ -17,8 +31,6 @@ void Framebuffer::set_light_direction(float lx, float ly, float lz)
 
 void Framebuffer::clear()
 {
-    std::cout << "\x1b[H"; // Move cursor to start
-
     // Reset terminal buffers
     std::fill(buffer.begin(), buffer.end(), ' ');
     std::fill(z_buffer.begin(), z_buffer.end(), 0.0f);
@@ -43,16 +55,6 @@ void Framebuffer::render_vertex(const Vertex &v)
             z_buffer[index] = rot_ooz;
             buffer[index] = calculate_vertex_char(v);
         }
-    }
-}
-
-void Framebuffer::display() const
-{
-    // Write to screen line-by-line
-    for (int y = 0; y < HEIGHT; y++)
-    {
-        std::cout.write(&buffer[y * WIDTH], WIDTH);
-        std::cout << '\n';
     }
 }
 

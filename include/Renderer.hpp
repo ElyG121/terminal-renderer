@@ -3,6 +3,7 @@
 #include <memory>
 #include "Shape.hpp"
 #include "Framebuffer.hpp"
+#include "TerminalOutput.hpp"
 
 class Renderer
 {
@@ -21,6 +22,7 @@ public:
 
 private:
     Framebuffer screen; // The Renderer owns the screen now
+    TerminalOutput terminal; // Writes the screen to the terminal (declared after screen: members init in this order)
 
     // Hidden internal rendering pipeline
     void render_shape(const std::unique_ptr<Shape> &shape_ptr);

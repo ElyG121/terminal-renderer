@@ -30,11 +30,14 @@ public:
     {
     }
 
+    // Read-only access for output and tests
+    int width() const;
+    int height() const;
+    const std::vector<char> &chars() const;
+
     void clear();
 
     void render_vertex(const Vertex &v);
 
     void set_light_direction(float lx, float ly, float lz);
-
-    void display() const;
 };
