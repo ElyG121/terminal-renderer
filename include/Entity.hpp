@@ -28,3 +28,6 @@ struct Entity
 };
 
 using Scene = std::vector<Entity>;
+
+// Advance every entity in the scene by delta seconds
+void update_scene(Scene &scene, float delta);

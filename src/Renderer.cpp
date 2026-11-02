@@ -1,47 +1,24 @@
 #include "Renderer.hpp"
 #include "Mat3.hpp"
-#include <iostream>
-#include <chrono>
-#include <thread>
 
 Renderer::Renderer(const ScreenSize &size, const Camera &camera)
-    : screen(size, camera), terminal(std::cout)
+    : screen(size, camera)
 {
-    terminal.begin(); // Clear the terminal ONCE at startup
 }
 
-void Renderer::render_scene(Scene &scene, int max_frames)
+void Renderer::draw(const Scene &scene)
 {
-    using clock = std::chrono::steady_clock;
-    const auto frame_duration = std::chrono::milliseconds(33);
-    auto previous = clock::now();
-    int frame_count = 0;
+    screen.clear();
 
-    while (max_frames < 0 || frame_count < max_frames)
+    for (const Entity &entity : scene)
     {
-        auto current = clock::now();
-        std::chrono::duration<float> delta_duration = current - previous;
-        previous = current;
-        float delta = delta_duration.count();
-
-        clear_screen();
-
-        for (Entity &entity : scene)
-        {
-            entity.update(delta);
-            render_entity(entity);
-        }
-
-        display();
-
-        auto elapsed = clock::now() - current;
-        if (elapsed < frame_duration)
-        {
-            std::this_thread::sleep_for(frame_duration - elapsed);
-        }
-
-        frame_count++;
+        render_entity(entity);
     }
+}
+
+const Framebuffer &Renderer::framebuffer() const
+{
+    return screen;
 }
 
 void Renderer::render_entity(const Entity &entity)
@@ -67,14 +44,4 @@ void Renderer::set_light_direction(const Vec3 &direction)
 {
     // Delegate the math to the internal framebuffer
     screen.set_light_direction(direction);
-}
-
-void Renderer::clear_screen()
-{
-    screen.clear();
-}
-
-void Renderer::display()
-{
-    terminal.present(screen);
 }

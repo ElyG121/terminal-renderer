@@ -2,26 +2,25 @@
 #include "Camera.hpp"
 #include "Entity.hpp"
 #include "Framebuffer.hpp"
-#include "TerminalOutput.hpp"
 
+// Draws a scene into a framebuffer, one frame per call.
+// It does not own the main loop, time, or output: the caller decides those.
 class Renderer
 {
 public:
     // Initialize the renderer and its internal framebuffer
     Renderer(const ScreenSize &size, const Camera &camera = Camera{});
 
-    // The only public function the user needs to call
-    void render_scene(Scene &scene, int max_frames = -1);
-
     void set_light_direction(const Vec3 &direction);
 
-    // Utility methods for the user to control the screen
-    void clear_screen();
-    void display();
+    // Clear the framebuffer and draw every entity. Does not change the scene.
+    void draw(const Scene &scene);
+
+    // The finished frame, for output (e.g. TerminalOutput::present) or tests
+    const Framebuffer &framebuffer() const;
 
 private:
-    Framebuffer screen; // The Renderer owns the screen now
-    TerminalOutput terminal; // Writes the screen to the terminal (declared after screen: members init in this order)
+    Framebuffer screen; // The Renderer owns the screen
 
     // Hidden internal rendering pipeline
     void render_entity(const Entity &entity);

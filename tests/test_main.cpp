@@ -1,9 +1,11 @@
 #include "test_utils.hpp"
 #include "Camera.hpp"
 #include "Entity.hpp"
+#include "FixedTimestep.hpp"
 #include "Framebuffer.hpp"
 #include "Mat3.hpp"
 #include "Mesh.hpp"
+#include "Renderer.hpp"
 #include "TerminalOutput.hpp"
 #include "Vec3.hpp"
 #include "Vertex.hpp"
@@ -167,6 +169,97 @@ static void test_camera_projection()
     assert_eq(visible_column(square_fb, 2), 11, "With char_aspect 1, x = 1 should be 1 column right of centre");
 }
 
+static void test_fixed_timestep()
+{
+    // Use step sizes that floats store exactly (like 0.25), so rounding can't change the step count
+    int calls = 0;
+    auto count_calls = [&](float) { ++calls; };
+
+    // The cap is raised to 2.0 here so it doesn't interfere with the step counting
+    FixedTimestep ts(0.25f, 2.0f);
+    assert_eq(ts.advance(1.0f, count_calls), 4, "1.0s with dt 0.25 should run 4 steps");
+    assert_eq(calls, 4, "step should be called once per physics step");
+
+    // Leftover time carries over: 0.3 runs one step and keeps 0.05, then 0.2 completes another
+    FixedTimestep carry(0.25f, 2.0f);
+    assert_eq(carry.advance(0.3f, count_calls), 1, "0.3s should run one step");
+    assert_eq(carry.advance(0.2f, count_calls), 1, "Leftover time should carry into the next frame");
+
+    // A long stall is capped (default 0.25s) instead of demanding 40 catch-up steps
+    FixedTimestep capped(0.25f);
+    assert_eq(capped.advance(10.0f, count_calls), 1, "A 10s frame should be capped to one 0.25s step");
+
+    // A zero step would loop forever; it should do nothing instead
+    FixedTimestep zero(0.0f);
+    assert_eq(zero.advance(1.0f, count_calls), 0, "A zero dt should run no steps");
+}
+
+// A cube that falls under gravity and bounces, like the one in main.cpp
+static Entity make_bouncing_entity()
+{
+    Entity e;
+    e.behavior = [](Entity &self, float d)
+    {
+        self.motion.velocity.y += 15.0f * d;
+        if (self.transform.position.y > 8.0f)
+        {
+            self.transform.position.y = 8.0f;
+            self.motion.velocity.y = self.motion.velocity.y * -0.85f;
+        }
+    };
+    return e;
+}
+
+static void test_fixed_timestep_is_deterministic()
+{
+    // The same total time (60/64 s) delivered in different frame sizes.
+    // Multiples of 1/64 are exact in binary, so both runs take exactly 60 physics steps.
+    const float dt = 1.0f / 64.0f;
+
+    Entity a = make_bouncing_entity();
+    FixedTimestep ts_a(dt);
+    for (int i = 0; i < 15; ++i)
+        ts_a.advance(4.0f * dt, [&](float step) { a.update(step); });
+
+    Entity b = make_bouncing_entity();
+    FixedTimestep ts_b(dt);
+    for (int i = 0; i < 12; ++i)
+        ts_b.advance(5.0f * dt, [&](float step) { b.update(step); });
+
+    // Exactly equal, not just close: the physics never saw the frame sizes
+    assert_true(a.transform.position.y == b.transform.position.y, "Fixed timestep: position should not depend on frame size");
+    assert_true(a.motion.velocity.y == b.motion.velocity.y, "Fixed timestep: velocity should not depend on frame size");
+
+    // Contrast: passing the frame time straight to update (the old approach) gives different results
+    Entity c = make_bouncing_entity();
+    for (int i = 0; i < 15; ++i)
+        c.update(4.0f * dt);
+
+    Entity d = make_bouncing_entity();
+    for (int i = 0; i < 12; ++i)
+        d.update(5.0f * dt);
+
+    assert_true(c.transform.position.y != d.transform.position.y, "Variable timestep: position depends on frame size");
+}
+
+static void test_renderer_draw()
+{
+    Renderer renderer(ScreenSize{21, 11}, Camera{10.0f, 10.0f});
+    renderer.set_light_direction({0.0f, 0.0f, -1.0f});
+
+    Scene scene;
+    Entity cube;
+    cube.mesh = std::make_shared<const Mesh>(make_cube(1.0f));
+    scene.push_back(cube);
+
+    // One frame, returns immediately: no loop, no clock, no sleeping
+    renderer.draw(scene);
+
+    const std::vector<char> &chars = renderer.framebuffer().chars();
+    assert_true(std::any_of(chars.begin(), chars.end(), [](char c) { return c != ' '; }),
+                "Drawing a cube should put visible characters in the framebuffer");
+}
+
 static void test_terminal_output()
 {
     Framebuffer fb(ScreenSize{5, 5}, Camera{5.0f, 1.0f});
@@ -194,6 +287,9 @@ int main()
     test_framebuffer_render();
     test_camera_projection();
     test_terminal_output();
+    test_fixed_timestep();
+    test_fixed_timestep_is_deterministic();
+    test_renderer_draw();
 
     std::cout << "All tests passed!\n";
     return 0;

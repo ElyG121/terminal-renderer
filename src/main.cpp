@@ -1,7 +1,12 @@
 #include "Renderer.hpp"
 #include "Entity.hpp"
+#include "FixedTimestep.hpp"
 #include "Mesh.hpp"
+#include "TerminalOutput.hpp"
+#include <chrono>
+#include <iostream>
 #include <memory>
+#include <thread>
 
 int main()
 {
@@ -35,7 +40,35 @@ int main()
     };
     scene.push_back(std::move(cube));
 
-    engine.render_scene(scene);
+    // 3. Main loop: main owns time and output, the renderer only draws
+    TerminalOutput terminal(std::cout);
+    terminal.begin(); // Clear the terminal ONCE at startup
+
+    FixedTimestep timestep(1.0f / 60.0f);                      // Physics at 60 Hz
+    const auto frame_duration = std::chrono::milliseconds(33); // Drawing at ~30 FPS
+
+    using clock = std::chrono::steady_clock;
+    auto previous = clock::now();
+
+    while (true)
+    {
+        auto frame_start = clock::now();
+        float frame_seconds = std::chrono::duration<float>(frame_start - previous).count();
+        previous = frame_start;
+
+        // Physics always moves in equal steps, however long the frame took
+        timestep.advance(frame_seconds, [&](float dt) { update_scene(scene, dt); });
+
+        engine.draw(scene);
+        terminal.present(engine.framebuffer());
+
+        // Sleep for whatever is left of this frame's time budget
+        auto elapsed = clock::now() - frame_start;
+        if (elapsed < frame_duration)
+        {
+            std::this_thread::sleep_for(frame_duration - elapsed);
+        }
+    }
 
     return 0;
 }
